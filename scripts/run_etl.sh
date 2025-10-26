@@ -11,11 +11,12 @@ PSQL_CMD="psql -X -q -t -A -v ON_ERROR_STOP=1"
 LOG_ID=0
 
 log_start() {
+    local ts=$(date -u +"%Y-%m-%d %H:%M:%SZ")
     echo "========================================="
-    echo "STARTING JOB: $JOB_NAME"
-    
+    echo "[$ts] STARTING: $JOB_NAME"
+
     LOG_ID=$($PSQL_CMD -c \
-        "INSERT INTO log.logs (jobname, status) VALUES ('$JOB_NAME', 'STARTED') RETURNING log_id;")
+        "INSERT INTO log.logs (jobname, status, start_date) VALUES ('ETL: Full Pipeline', 'STARTED', NOW()) RETURNING log_id;")
     
     if [ -z "$LOG_ID" ]; then
         echo "FATAL: Could not create log entry in database."
@@ -26,7 +27,8 @@ log_start() {
 
 log_fail() {
     local error_msg=$(echo "$1" | tr "'" " ")
-    echo "!!! JOB FAILED: $error_msg"
+    local ts=$(date -u +"%Y-%m-%d %H:%M:%SZ")
+    echo "[$ts] !!! JOB FAILED: $error_msg (log_id=$LOG_ID)"
     $PSQL_CMD -c \
         "UPDATE log.logs 
          SET status = 'FAILED', end_date = NOW(), error_message = 'Job failed: $error_msg'
@@ -36,7 +38,8 @@ log_fail() {
 }
 
 log_success() {
-    echo "✅ JOB SUCCEEDED"
+    local ts=$(date -u +"%Y-%m-%d %H:%M:%SZ")
+    echo "[$ts] ✅ JOB SUCCEEDED (log_id=$LOG_ID)"
     $PSQL_CMD -c \
         "UPDATE log.logs SET status = 'SUCCESS', end_date = NOW() WHERE log_id = $LOG_ID;"
     echo "========================================="
@@ -46,19 +49,16 @@ trap 'log_fail "Script exited with error on line $LINENO"' ERR
 
 log_start
 
-# # Step 1: Preprocessing (Python)
-# echo "Running Python preprocessing..."
-# python3 $PYTHON_SCRIPT
-# echo "Python preprocessing complete."
+echo "-> Running Python preprocessing..."
+python3 $PYTHON_SCRIPT
+echo "-> Python preprocessing complete."
 
-# # Step 2: Load to Staging (SQL)
-# echo "Running Load script (1_load.sql)..."
-# $PSQL_CMD -f $LOAD_SCRIPT
-# echo "Load script complete."
+echo "-> Running Load script (staging load)..."
+$PSQL_CMD -f $LOAD_SCRIPT
+echo "-> Load script complete."
 
-# Step 3: Transform (SQL)
-echo "Running Transform script (2_transform.sql)..."
+echo "-> Running Transform script (process -> production)..."
 $PSQL_CMD -f $TRANSFORM_SCRIPT
-echo "Transform script complete." 
+echo "-> Transform script complete." 
 
 log_success

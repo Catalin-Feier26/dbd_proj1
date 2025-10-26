@@ -5,6 +5,7 @@ A PostgreSQL-based ETL (Extract, Transform, Load) pipeline for processing Steam 
 ## Project Overview
 
 This project implements a complete ETL pipeline that:
+
 - Loads Steam game data from JSON files into a staging area
 - Validates and transforms the data using PostgreSQL functions
 - Stores processed data in a normalized star schema database
@@ -13,6 +14,7 @@ This project implements a complete ETL pipeline that:
 ## Architecture
 
 The project uses a Docker-based architecture with two main services:
+
 - **PostgreSQL Database** (postgres:15-alpine): Stores raw and processed data
 - **ETL Container**: Runs preprocessing scripts and SQL transformations
 
@@ -32,18 +34,18 @@ HUMUHUM project/
 │   ├── 1_load.sql            # Load data to staging
 │   ├── 2_transform.sql       # Transform and process data
 │   └── run_etl.sh            # Main ETL orchestration script
-└── cron/                      # Cron job configurations
-    └── etl-cron
 ```
 
 ## Database Schema
 
 ### Schemas
+
 - **staging**: Raw data staging area
 - **processed**: Cleaned and normalized data
 - **log**: ETL job execution logs
 
 ### Main Tables (processed schema)
+
 - **game**: Main game information
 - **developer**: Game developers
 - **publisher**: Game publishers
@@ -52,6 +54,7 @@ HUMUHUM project/
 - **tag**: User-generated tags
 
 ### Junction Tables
+
 - **game_developer**: Many-to-many relationship between games and developers
 - **game_publisher**: Many-to-many relationship between games and publishers
 - **game_genre**: Many-to-many relationship between games and genres
@@ -77,6 +80,7 @@ cd "HUMUHUM project"
 ### 2. Prepare Data Files
 
 Place your Steam game data files in the `data/` directory:
+
 - `games.json` or `games.jsonl`
 
 ### 3. Start the Services
@@ -86,6 +90,7 @@ docker-compose up -d
 ```
 
 This command will:
+
 - Build the ETL container
 - Start the PostgreSQL database
 - Initialize the database schema using `0_init_db.sql`
@@ -113,6 +118,7 @@ docker exec steam-etl-cron bash /scripts/run_etl.sh
 ### Individual Steps
 
 #### Step 1: Preprocessing (Python)
+
 Currently commented out in the main script. To run manually:
 
 ```bash
@@ -120,6 +126,7 @@ docker exec steam-etl-cron python3 /scripts/preprocessing/preprocess.py
 ```
 
 #### Step 2: Load to Staging
+
 Load raw JSON data into the staging schema:
 
 ```bash
@@ -127,6 +134,7 @@ docker exec steam-etl-cron psql -v ON_ERROR_STOP=1 -f /scripts/1_load.sql
 ```
 
 #### Step 3: Transform Data
+
 Process and normalize data into the final schema:
 
 ```bash
@@ -152,16 +160,19 @@ psql -h localhost -p 5435 -U postgres -d steamdb
 ### Useful SQL Queries
 
 Check ETL job logs:
+
 ```sql
 SELECT * FROM log.logs ORDER BY start_date DESC LIMIT 10;
 ```
 
 View game count:
+
 ```sql
 SELECT COUNT(*) FROM processed.game;
 ```
 
 View games with developers:
+
 ```sql
 SELECT g.name, d.name as developer
 FROM processed.game g
@@ -171,6 +182,7 @@ LIMIT 10;
 ```
 
 Check staging data:
+
 ```sql
 SELECT COUNT(*) FROM staging.staging_events;
 ```
@@ -178,20 +190,24 @@ SELECT COUNT(*) FROM staging.staging_events;
 ## Key Features
 
 ### Data Validation
+
 - JSON validation before processing
 - Date parsing with multiple format support
 - Automatic data type coercion with defaults
 - String truncation to prevent overflow errors
 
 ### Incremental Loading
+
 The pipeline supports incremental loads by tracking the `load_date` timestamp. Only new data since the last successful load is processed.
 
 ### Error Handling
+
 - Comprehensive error logging in the `log.logs` table
 - Transaction rollback on failures
 - Detailed error messages with line numbers
 
 ### Data Normalization
+
 - Proper normalization to avoid data redundancy
 - Junction tables for many-to-many relationships
 - Unique constraints to prevent duplicates
@@ -213,7 +229,7 @@ docker logs steam-etl-db
 ### Check Job Status
 
 ```sql
-SELECT 
+SELECT
     log_id,
     jobname,
     status,
@@ -250,6 +266,7 @@ docker-compose restart
 ### Database Connection Issues
 
 If you can't connect to the database:
+
 1. Check if the container is running: `docker-compose ps`
 2. Check database logs: `docker logs steam-etl-db`
 3. Verify port 5435 is not in use: `netstat -an | findstr 5435` (Windows) or `lsof -i :5435` (Mac/Linux)
@@ -264,6 +281,7 @@ If you can't connect to the database:
 ### Out of Memory Errors
 
 If processing large datasets:
+
 1. Increase Docker memory allocation in Docker Desktop settings
 2. Process data in smaller batches
 3. Add indexes to improve query performance
@@ -271,6 +289,7 @@ If processing large datasets:
 ### Permission Issues (Linux/Mac)
 
 If you encounter permission errors:
+
 ```bash
 chmod +x scripts/run_etl.sh
 ```
@@ -294,7 +313,7 @@ To change the database port, edit `docker-compose.yml`:
 
 ```yaml
 ports:
-  - "5435:5432"  # Change 5435 to your desired port
+  - "5435:5432" # Change 5435 to your desired port
 ```
 
 ## Development
