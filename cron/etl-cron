@@ -1,0 +1,5 @@
+# Run the ELT script every day at 2:00 AM
+0 2 * * * /scripts/run_elt.sh >> /var/log/cron.log 2>&1
+
+# For testing, you can use this line instead to run it every minute:
+# * * * * * /scripts/run_elt.sh >> /var/log/cron.log 2>&1
