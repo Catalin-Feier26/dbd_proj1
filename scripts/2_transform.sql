@@ -1,39 +1,19 @@
-/* ======================================================
-   SCRIPT: 2_transform.sql
-   PURPOSE: Create helper function and main transform function, then execute.
-   ====================================================== */
-
--- ============================================================
--- Helper: Ensure the schema exists before creation
--- ============================================================
 CREATE SCHEMA IF NOT EXISTS processed;
 
--- ============================================================
--- Helper Function: Safely validate JSON text
--- MUST BE CREATED *BEFORE* THE MAIN FUNCTION THAT USES IT
--- ============================================================
 CREATE OR REPLACE FUNCTION processed.is_valid_json(input TEXT)
 RETURNS BOOLEAN AS $$
 BEGIN
-    -- Attempt to cast the input text to jsonb
     PERFORM input::jsonb;
-    -- If the cast succeeds, the text is valid JSON
     RETURN TRUE;
 EXCEPTION
-    -- If any error occurs during the cast (e.g., syntax error), it's not valid JSON
     WHEN others THEN
         RETURN FALSE;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- ============================================================
--- Helper Function: Try parsing date string with multiple formats
--- MUST BE CREATED *BEFORE* THE MAIN FUNCTION THAT USES IT
--- ============================================================
 CREATE OR REPLACE FUNCTION public.try_to_date(date_text TEXT)
 RETURNS DATE AS $$
 DECLARE
-    -- Add more formats here if you find other date strings in your data
     formats TEXT[] := ARRAY['Mon DD, YYYY', 'DD Mon, YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY'];
     fmt TEXT;
     result DATE;
@@ -46,39 +26,25 @@ BEGIN
     LOOP
         BEGIN
             result := to_date(TRIM(date_text), fmt);
-            -- If successful, exit the loop and return the result
             RETURN result;
         EXCEPTION
-            -- If to_date fails for this format, continue to the next format
             WHEN OTHERS THEN
                 CONTINUE;
         END;
     END LOOP;
 
-    -- If no format matched, return NULL
-    -- Optionally, log the failed date string here if needed
-    -- RAISE NOTICE 'Could not parse date: %', date_text;
     RETURN NULL;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
-
--- ============================================================
--- Main Transform Function
--- ============================================================
 CREATE OR REPLACE FUNCTION processed.usp_load_from_staging()
 RETURNS VOID AS $$
 DECLARE
-    -- 1. Get cutoff date for incremental loads
     _cutoff_date TIMESTAMPTZ := COALESCE(
         (SELECT MAX(load_date) FROM processed.game),
         '1900-01-01'::timestamptz
     );
 BEGIN
-    -- ========================================================
-    -- 2. Create temporary table of valid, new JSON
-    --    Uses the helper function created above.
-    -- ========================================================
     CREATE TEMP TABLE temp_valid_json (
         data jsonb,
         load_date timestamptz
@@ -86,17 +52,14 @@ BEGIN
 
     INSERT INTO temp_valid_json (data, load_date)
     SELECT
-        s.content::jsonb, -- Cast the validated text to jsonb
+        s.content::jsonb,
         s.load_date
     FROM staging.staging_events s
     WHERE
         s.load_date > _cutoff_date
         AND s.content IS NOT NULL
-        AND processed.is_valid_json(s.content); -- Use the helper function
+        AND processed.is_valid_json(s.content);
 
-    -- ========================================================
-    -- 3. Clean and prepare the main game data
-    -- ========================================================
     CREATE TEMP TABLE temp_clean_game (
         app_id bigint,
         name varchar(500),
@@ -122,8 +85,7 @@ BEGIN
     SELECT
         (data ->> 'app_id')::bigint AS app_id,
         data ->> 'name' AS name,
-        -- Attempt to parse the date using the helper function
-        public.try_to_date(data ->> 'release_date') AS release_date, -- **FIXED LINE**
+        public.try_to_date(data ->> 'release_date') AS release_date,
         (data ->> 'price')::numeric(10,2) AS price,
         COALESCE((data ->> 'required_age')::int, 0) AS required_age,
         COALESCE((data ->> 'dlc_count')::int, 0) AS dlc_count,
@@ -140,12 +102,9 @@ BEGIN
         COALESCE((data ->> 'average_playtime_forever')::int, 0) AS average_playtime_forever,
         load_date
     FROM temp_valid_json
-    WHERE (data ->> 'app_id') IS NOT NULL  -- Ensure required fields are present
+    WHERE (data ->> 'app_id') IS NOT NULL
       AND (data ->> 'name') IS NOT NULL;
 
-    -- ========================================================
-    -- 4. Insert/Update into main 'game' table
-    -- ========================================================
     INSERT INTO processed.game (
         app_id, name, release_date, price, required_age, dlc_count,
         short_description, header_image, website, windows, mac, linux,
@@ -172,11 +131,6 @@ BEGIN
         average_playtime_forever = EXCLUDED.average_playtime_forever,
         load_date = EXCLUDED.load_date;
 
-    -- ========================================================
-    -- 5. Populate Dimensions & Junction Tables (Many-to-Many)
-    -- ========================================================
-
-    -- == DEVELOPERS ==
     INSERT INTO processed.developer (name)
     SELECT DISTINCT LEFT(TRIM(d.name), 255)
     FROM temp_valid_json
@@ -194,7 +148,6 @@ BEGIN
     WHERE jsonb_typeof(temp_valid_json.data -> 'developers') = 'array'
     ON CONFLICT (game_id, developer_id) DO NOTHING;
 
-    -- == PUBLISHERS ==
     INSERT INTO processed.publisher (name)
     SELECT DISTINCT TRIM(p.name)
     FROM temp_valid_json
@@ -212,7 +165,6 @@ BEGIN
     WHERE jsonb_typeof(temp_valid_json.data -> 'publishers') = 'array'
     ON CONFLICT (game_id, publisher_id) DO NOTHING;
 
-    -- == GENRES ==
     INSERT INTO processed.genre (name)
     SELECT DISTINCT TRIM(g.name)
     FROM temp_valid_json
@@ -230,7 +182,6 @@ BEGIN
     WHERE jsonb_typeof(temp_valid_json.data -> 'genres') = 'array'
     ON CONFLICT (game_id, genre_id) DO NOTHING;
 
-    -- == CATEGORIES ==
     INSERT INTO processed.category (name)
     SELECT DISTINCT TRIM(c.name)
     FROM temp_valid_json
@@ -248,7 +199,6 @@ BEGIN
     WHERE jsonb_typeof(temp_valid_json.data -> 'categories') = 'array'
     ON CONFLICT (game_id, category_id) DO NOTHING;
 
-    -- == TAGS ==
     INSERT INTO processed.tag (name)
     SELECT DISTINCT TRIM(t.key)
     FROM temp_valid_json
@@ -274,8 +224,4 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
-
--- ============================================================
--- Execute the transform function
--- ============================================================
 SELECT processed.usp_load_from_staging();

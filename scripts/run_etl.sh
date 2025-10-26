@@ -1,30 +1,19 @@
 #!/bin/bash
 
-# This makes the script exit immediately if any command fails
 set -e
 
-# --- Configuration ---
 JOB_NAME="Full Steam Games ELT Pipeline"
 PYTHON_SCRIPT="/scripts/preprocessing/preprocess.py"
 LOAD_SCRIPT="/scripts/1_load.sql"
 TRANSFORM_SCRIPT="/scripts/2_transform.sql"
 
-# psql command arguments. Uses env vars from docker-compose.
-# -X = no .psqlrc
-# -q = quiet
-# -t = tuples only (no headers)
-# -A = unaligned
-# -v ON_ERROR_STOP=1 = exit on first SQL error
 PSQL_CMD="psql -X -q -t -A -v ON_ERROR_STOP=1"
 LOG_ID=0
-
-# --- Logging Functions ---
 
 log_start() {
     echo "========================================="
     echo "STARTING JOB: $JOB_NAME"
     
-    # Create START log entry and capture the new log_id
     LOG_ID=$($PSQL_CMD -c \
         "INSERT INTO log.logs (jobname, status) VALUES ('$JOB_NAME', 'STARTED') RETURNING log_id;")
     
@@ -36,8 +25,7 @@ log_start() {
 }
 
 log_fail() {
-    # $1 = error message passed from the trap
-    local error_msg=$(echo "$1" | tr "'" " ") # Remove single quotes for SQL
+    local error_msg=$(echo "$1" | tr "'" " ")
     echo "!!! JOB FAILED: $error_msg"
     $PSQL_CMD -c \
         "UPDATE log.logs 
@@ -54,8 +42,6 @@ log_success() {
     echo "========================================="
 }
 
-# --- Main Job Logic ---
-# 'trap' will call log_fail with an error message if any command fails
 trap 'log_fail "Script exited with error on line $LINENO"' ERR
 
 log_start
@@ -75,5 +61,4 @@ echo "Running Transform script (2_transform.sql)..."
 $PSQL_CMD -f $TRANSFORM_SCRIPT
 echo "Transform script complete." 
 
-# Step 4: Success
 log_success

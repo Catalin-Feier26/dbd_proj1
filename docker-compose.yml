@@ -1,6 +1,5 @@
 
 services:
-  # 1. The PostgreSQL Database Container
   db:
     image: postgres:15-alpine
     container_name: steam-etl-db
@@ -20,7 +19,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # 2. The ETL Container
   etl:
     build:
       context: .
@@ -42,7 +40,6 @@ services:
       db:
         condition: service_healthy
 
-# Named volume for persisting Postgres data
 volumes:
   postgres-data:
     driver: local
