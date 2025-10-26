@@ -2,7 +2,7 @@
    SCRIPT: 0_init_db.sql
    PURPOSE: Create all schemas and tables for the ELT pipeline.
    ====================================================== */
-   
+
 /* =========================
    SCHEMAS
    ========================= */

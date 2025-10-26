@@ -4,10 +4,10 @@
 set -e
 
 # --- Configuration ---
-JOB_NAME="Full Steam Games ETL Pipeline"
+JOB_NAME="Full Steam Games ELT Pipeline"
 PYTHON_SCRIPT="/scripts/preprocessing/preprocess.py"
 LOAD_SCRIPT="/scripts/1_load.sql"
-TRANSFORM_SCRIPT="/scripts/2_transform.sql" # We'll create this file next
+TRANSFORM_SCRIPT="/scripts/2_transform.sql"
 
 # psql command arguments. Uses env vars from docker-compose.
 # -X = no .psqlrc
@@ -60,22 +60,20 @@ trap 'log_fail "Script exited with error on line $LINENO"' ERR
 
 log_start
 
-# Step 1: Preprocessing (Python)
-echo "Running Python preprocessing..."
-python3 $PYTHON_SCRIPT
-echo "Python preprocessing complete."
+# # Step 1: Preprocessing (Python)
+# echo "Running Python preprocessing..."
+# python3 $PYTHON_SCRIPT
+# echo "Python preprocessing complete."
 
-# Step 2: Load to Staging (SQL)
-echo "Running Load script (1_load.sql)..."
-$PSQL_CMD -f $LOAD_SCRIPT
-echo "Load script complete."
+# # Step 2: Load to Staging (SQL)
+# echo "Running Load script (1_load.sql)..."
+# $PSQL_CMD -f $LOAD_SCRIPT
+# echo "Load script complete."
 
 # Step 3: Transform (SQL)
 echo "Running Transform script (2_transform.sql)..."
-# We will create 2_transform.sql next. This will fail until then,
-# so for now, let's just add a placeholder echo.
-# $PSQL_CMD -f $TRANSFORM_SCRIPT
-echo "Transform script (SKIPPED FOR NOW)." 
+$PSQL_CMD -f $TRANSFORM_SCRIPT
+echo "Transform script complete." 
 
 # Step 4: Success
 log_success
