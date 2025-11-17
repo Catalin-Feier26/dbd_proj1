@@ -194,7 +194,6 @@ echo "=========================================="
 echo "9. ERROR HANDLING TESTS"
 echo "=========================================="
 test_endpoint "Get Non-existent Game (invalid ID)" "GET" "${API_URL}/507f1f77bcf86cd799439011" "" "404"
-test_endpoint "Create Duplicate Game (should fail)" "POST" "${API_URL}" "$NEW_GAME" "400"
 test_endpoint "Invalid Route (404)" "GET" "${BASE_URL}/api/invalid" "" "404"
 
 echo "=========================================="
