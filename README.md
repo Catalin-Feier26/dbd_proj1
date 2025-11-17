@@ -1,40 +1,62 @@
-# Steam Games ETL Pipeline
+# Steam Games ETL Pipeline with MongoDB Backend
 
-A PostgreSQL-based ETL (Extract, Transform, Load) pipeline for processing Steam game data using Docker containers.
+A complete data pipeline that extracts Steam game data from PostgreSQL and provides a REST API backed by MongoDB.
 
 ## Project Overview
 
-This project implements a complete ETL pipeline that:
+This project implements:
 
-- Loads Steam game data from JSON files into a staging area
-- Validates and transforms the data using PostgreSQL functions
-- Stores processed data in a normalized star schema database
-- Tracks all ETL operations with comprehensive logging
+- **PostgreSQL ETL Pipeline**: Loads and transforms Steam game data using pg_cron scheduled jobs
+- **MongoDB Migration**: Migrates normalized PostgreSQL data to MongoDB document store
+- **REST API**: TypeScript/Node.js backend providing CRUD operations on game data
 
 ## Architecture
 
-The project uses a Docker-based architecture with two main services:
+```
+JSON Files → PostgreSQL (ETL) → Node.js Backend → MongoDB Atlas
+                ↓                       ↓
+         Star Schema (normalized)   Document Store (embedded)
+                ↓
+         pg_cron (daily 02:00)
+```
 
-- **PostgreSQL Database** (postgres:16): Stores raw and processed data
+### Services
+
+- **PostgreSQL Database** (postgres:16): Stores raw and processed data with pg_cron
 - **ETL Container**: Runs preprocessing scripts and SQL transformations
+- **Backend API** (Node.js/TypeScript): REST API with MongoDB integration
 
 ## Project Structure
 
 ```
 project/
-├── docker-compose.yml         # Docker orchestration configuration
-├── etl.Dockerfile             # ETL container definition
-├── db.Dockerfile              # DB container definition
+├── docker-compose.yml         # Docker orchestration (db, etl, backend)
+├── db.Dockerfile              # PostgreSQL with pg_cron
+├── etl.Dockerfile             # ETL container with Python
+├── backend.Dockerfile         # Node.js TypeScript backend
+├── .env.example               # Environment variables template
 ├── data/                      # Source data directory
-│   ├── games.json             # Games json data
-│   └── games.jsonl            # Games json preprocessed
+│   ├── games.json             # Raw games data
+│   └── games.jsonl            # Preprocessed JSONL
 ├── preprocessing/             # Python preprocessing scripts
 │   └── preprocess.py
 ├── scripts/                   # SQL and bash scripts
 │   ├── 0_init_db.sql          # Database initialization
 │   ├── 1_load.sql             # Load data to staging
 │   ├── 2_transform.sql        # Transform and process data
-│   └── run_etl.sh             # Main ETL orchestration script
+│   ├── pg_cron_daily.sql      # pg_cron scheduled jobs
+│   └── run_etl.sh             # ETL orchestration script
+└── backend/                   # TypeScript backend
+    ├── src/
+    │   ├── config/            # Database connections
+    │   ├── models/            # Mongoose schemas
+    │   ├── controllers/       # CRUD logic
+    │   ├── routes/            # Express routes
+    │   ├── services/          # Migration service
+    │   ├── server.ts          # Express server
+    │   └── migrate.ts         # Migration script
+    ├── package.json
+    └── README.md              # Backend documentation
 ```
 
 ## Database Schema
@@ -60,6 +82,49 @@ project/
 - **game_publisher**: Many-to-many relationship between games and publishers
 
 ### Commands
+
+## Quick Start
+
+1. **Configure MongoDB connection**:
+
+```bash
+cp .env.example .env
+# Edit .env and add your MongoDB Atlas connection string
+```
+
+2. **Build and start all services**:
+
+```bash
+docker-compose up --build -d
+```
+
+This will start:
+
+- PostgreSQL database on port 5435
+- Backend API on port 3001
+- ETL container (runs on demand)
+
+3. **Run the PostgreSQL ETL** (populate the database):
+
+```bash
+docker exec steam-etl-cron bash /scripts/run_etl.sh
+```
+
+4. **Migrate data to MongoDB**:
+
+```bash
+docker exec steam-games-backend npm run migrate
+```
+
+5. **Access the API**:
+
+```bash
+curl http://localhost:3001/api/games?limit=5
+```
+
+## Detailed Commands
+
+### Docker Management
 
 - Build and start services (rebuild images if Dockerfile changed):
 
@@ -104,6 +169,58 @@ docker-compose exec db psql -U postgres -d steamdb -c "SELECT jobid, schedule, c
 ```bash
 docker-compose exec db psql -U postgres -d steamdb -c "SELECT * FROM log.logs ORDER BY start_date DESC LIMIT 20;"
 ```
+
+### Backend API
+
+- View backend logs:
+
+```bash
+docker logs -f steam-games-backend
+```
+
+- Run migration manually:
+
+```bash
+docker exec steam-games-backend npm run migrate
+```
+
+- Run migration with limit (for testing):
+
+```bash
+docker exec steam-games-backend npm run migrate -- --limit 100
+```
+
+- Access API endpoints:
+
+```bash
+# Get all games with pagination
+curl "http://localhost:3001/api/games?page=1&limit=10"
+
+# Search games
+curl "http://localhost:3001/api/games?search=Portal"
+
+# Filter by genre
+curl "http://localhost:3001/api/games?genre=Action"
+
+# Get statistics
+curl http://localhost:3001/api/games/stats
+
+# Health check
+curl http://localhost:3001/health
+```
+
+See `backend/README.md` for complete API documentation.
+
+## Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+# MongoDB Atlas connection string (required for backend)
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+```
+
+The backend will use this environment variable. PostgreSQL credentials are configured in docker-compose.yml.
 
 ## Notes
 

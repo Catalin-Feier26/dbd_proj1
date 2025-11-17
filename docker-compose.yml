@@ -13,6 +13,12 @@ services:
       - postgres-data:/var/lib/postgresql/data
     ports:
       - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   etl:
     build:
       context: .
@@ -27,6 +33,31 @@ services:
       PGUSER: postgres
       PGPASSWORD: root
       PGDATABASE: steamdb
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: steam-games-backend
+    ports:
+      - "3100:3000"
+    environment:
+      PG_HOST: db
+      PG_PORT: 5432
+      PG_DATABASE: steamdb
+      PG_USER: postgres
+      PG_PASSWORD: root
+      MONGODB_URI: ${MONGODB_URI:-mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority}
+      MONGODB_DB: steam_games
+      PORT: 3000
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres-data:
