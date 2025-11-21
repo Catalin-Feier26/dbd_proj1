@@ -194,19 +194,61 @@ docker exec steam-games-backend npm run migrate -- --limit 100
 
 ```bash
 # Get all games with pagination
-curl "http://localhost:3001/api/games?page=1&limit=10"
+curl "http://localhost:3100/api/games?page=1&limit=10"
+
+# Get a specific game by ID
+curl "http://localhost:3100/api/games/<game_id>"
 
 # Search games
-curl "http://localhost:3001/api/games?search=Portal"
+curl "http://localhost:3100/api/games?search=Portal"
 
 # Filter by genre
-curl "http://localhost:3001/api/games?genre=Action"
+curl "http://localhost:3100/api/games?genre=Action"
+
+# Create a new game
+curl -X POST "http://localhost:3100/api/games" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "appId": 999999,
+    "name": "My New Game",
+    "releaseDate": "2024-01-15",
+    "price": 29.99,
+    "requiredAge": 12,
+    "dlcCount": 2,
+    "shortDescription": "Adventure puzzle game",
+    "headerImage": "https://example.com/header.jpg",
+    "website": "https://example.com",
+    "platforms": {
+      "windows": true,
+      "mac": true,
+      "linux": false
+    },
+    "metacriticScore": 85,
+    "recommendations": 1500,
+    "ratings": {
+      "positive": 1200,
+      "negative": 300
+    },
+    "averagePlaytimeForever": 240
+  }'
+
+# Update a game
+curl -X PUT "http://localhost:3100/api/games/<game_id>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Game Name",
+    "price": 19.99,
+    "short_description": "Updated description"
+  }'
+
+# Delete a game
+curl -X DELETE "http://localhost:3100/api/games/<game_id>"
 
 # Get statistics
-curl http://localhost:3001/api/games/stats
+curl http://localhost:3100/api/games/stats
 
 # Health check
-curl http://localhost:3001/health
+curl http://localhost:3100/health
 ```
 
 See `backend/README.md` for complete API documentation.
