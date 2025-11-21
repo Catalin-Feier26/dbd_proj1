@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
 
-// TypeScript interfaces for collections
 export interface IDeveloper extends Document {
   name: string;
   postgresId?: number;
@@ -36,7 +35,6 @@ export interface ITag extends Document {
   updatedAt?: Date;
 }
 
-// Main Game interface with references
 export interface IGame extends Document {
   appId: number;
   name: string;
@@ -65,7 +63,6 @@ export interface IGame extends Document {
   updatedAt?: Date;
 }
 
-// Junction table interfaces for many-to-many relationships
 export interface IGameDeveloper extends Document {
   gameId: Types.ObjectId;
   developerId: Types.ObjectId;
@@ -92,7 +89,6 @@ export interface IGameTag extends Document {
   tagCount?: number;
 }
 
-// Developer Schema
 const DeveloperSchema = new Schema<IDeveloper>(
   {
     name: { type: String, required: true, unique: true, index: true },
@@ -101,7 +97,6 @@ const DeveloperSchema = new Schema<IDeveloper>(
   { timestamps: true }
 );
 
-// Publisher Schema
 const PublisherSchema = new Schema<IPublisher>(
   {
     name: { type: String, required: true, unique: true, index: true },
@@ -110,7 +105,6 @@ const PublisherSchema = new Schema<IPublisher>(
   { timestamps: true }
 );
 
-// Genre Schema
 const GenreSchema = new Schema<IGenre>(
   {
     name: { type: String, required: true, unique: true, index: true },
@@ -119,7 +113,6 @@ const GenreSchema = new Schema<IGenre>(
   { timestamps: true }
 );
 
-// Category Schema
 const CategorySchema = new Schema<ICategory>(
   {
     name: { type: String, required: true, unique: true, index: true },
@@ -128,7 +121,6 @@ const CategorySchema = new Schema<ICategory>(
   { timestamps: true }
 );
 
-// Tag Schema
 const TagSchema = new Schema<ITag>(
   {
     name: { type: String, required: true, unique: true, index: true },
@@ -137,7 +129,6 @@ const TagSchema = new Schema<ITag>(
   { timestamps: true }
 );
 
-// Main Game schema
 const GameSchema = new Schema<IGame>(
   {
     appId: {
@@ -211,7 +202,6 @@ const GameSchema = new Schema<IGame>(
   { timestamps: true }
 );
 
-// Junction table schemas
 const GameDeveloperSchema = new Schema<IGameDeveloper>(
   {
     gameId: {
@@ -303,17 +293,14 @@ const GameTagSchema = new Schema<IGameTag>(
   { timestamps: true }
 );
 
-// Text index for search
 GameSchema.index({ name: "text" });
 
-// Compound indexes for junction tables
 GameDeveloperSchema.index({ gameId: 1, developerId: 1 }, { unique: true });
 GamePublisherSchema.index({ gameId: 1, publisherId: 1 }, { unique: true });
 GameGenreSchema.index({ gameId: 1, genreId: 1 }, { unique: true });
 GameCategorySchema.index({ gameId: 1, categoryId: 1 }, { unique: true });
 GameTagSchema.index({ gameId: 1, tagId: 1 }, { unique: true });
 
-// Export models
 export const Game = mongoose.model<IGame>("Game", GameSchema);
 export const Developer = mongoose.model<IDeveloper>(
   "Developer",

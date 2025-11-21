@@ -15,9 +15,6 @@ import {
 import { Types } from "mongoose";
 
 export class MigrationService {
-  /**
-   * Get IDs of entities related to specific games (when using limit)
-   */
   async getRelatedEntityIds(gameIds: number[]) {
     if (gameIds.length === 0) {
       return {
@@ -194,9 +191,6 @@ export class MigrationService {
     return idMap;
   }
 
-  /**
-   * Step 2: Migrate main game table
-   */
   async migrateGames(limit?: number): Promise<Map<number, Types.ObjectId>> {
     const limitClause = limit ? `LIMIT ${limit}` : "";
 

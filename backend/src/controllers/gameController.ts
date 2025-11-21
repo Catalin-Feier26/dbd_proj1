@@ -2,10 +2,6 @@ import { Request, Response } from "express";
 import { Game, IGame } from "../models/Game";
 
 export class GameController {
-  /**
-   * Create a new game
-   * POST /api/games
-   */
   async createGame(req: Request, res: Response): Promise<void> {
     try {
       const gameData: Partial<IGame> = req.body;
@@ -31,40 +27,30 @@ export class GameController {
     }
   }
 
-  /**
-   * Get all games with pagination and filtering
-   * GET /api/games?page=1&limit=10&search=Portal&genre=Action&minPrice=0&maxPrice=60
-   */
   async getAllGames(req: Request, res: Response): Promise<void> {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
       const skip = (page - 1) * limit;
 
-      // Build filter object
       const filter: any = {};
 
-      // Text search on game name
       if (req.query.search) {
         filter.$text = { $search: req.query.search as string };
       }
 
-      // Filter by genre
       if (req.query.genre) {
         filter["genres.name"] = req.query.genre;
       }
 
-      // Filter by developer
       if (req.query.developer) {
         filter["developers.name"] = req.query.developer;
       }
 
-      // Filter by publisher
       if (req.query.publisher) {
         filter["publishers.name"] = req.query.publisher;
       }
 
-      // Price range filter
       if (req.query.minPrice || req.query.maxPrice) {
         filter.price = {};
         if (req.query.minPrice) {
@@ -75,20 +61,17 @@ export class GameController {
         }
       }
 
-      // Metacritic score filter
       if (req.query.minScore) {
         filter.metacriticScore = {
           $gte: parseInt(req.query.minScore as string),
         };
       }
 
-      // Platform filter
       if (req.query.platform) {
         const platform = req.query.platform as string;
         filter[`platforms.${platform}`] = true;
       }
 
-      // Execute query with pagination
       const [games, total] = await Promise.all([
         Game.find(filter).skip(skip).limit(limit).sort({ name: 1 }).lean(),
         Game.countDocuments(filter),
@@ -112,10 +95,6 @@ export class GameController {
     }
   }
 
-  /**
-   * Get game by ID
-   * GET /api/games/:id
-   */
   async getGameById(req: Request, res: Response): Promise<void> {
     try {
       const game = await Game.findById(req.params.id);
@@ -140,10 +119,6 @@ export class GameController {
     }
   }
 
-  /**
-   * Get game by appId
-   * GET /api/games/app/:appId
-   */
   async getGameByAppId(req: Request, res: Response): Promise<void> {
     try {
       const appId = parseInt(req.params.appId);
@@ -169,10 +144,6 @@ export class GameController {
     }
   }
 
-  /**
-   * Update game
-   * PUT /api/games/:id
-   */
   async updateGame(req: Request, res: Response): Promise<void> {
     try {
       const game = await Game.findByIdAndUpdate(
@@ -201,10 +172,6 @@ export class GameController {
     }
   }
 
-  /**
-   * Delete game
-   * DELETE /api/games/:id
-   */
   async deleteGame(req: Request, res: Response): Promise<void> {
     try {
       const game = await Game.findByIdAndDelete(req.params.id);
@@ -230,10 +197,6 @@ export class GameController {
     }
   }
 
-  /**
-   * Get game statistics
-   * GET /api/games/stats
-   */
   async getStatistics(_req: Request, res: Response): Promise<void> {
     try {
       const [

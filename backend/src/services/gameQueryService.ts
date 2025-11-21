@@ -46,9 +46,6 @@ export interface GameWithRelations {
 }
 
 export class GameQueryService {
-  /**
-   * Populate a single game with all its related data
-   */
   async populateGameRelations(
     gameId: Types.ObjectId
   ): Promise<GameWithRelations | null> {
@@ -74,9 +71,6 @@ export class GameQueryService {
     } as GameWithRelations;
   }
 
-  /**
-   * Get developers for a game
-   */
   async getGameDevelopers(gameId: Types.ObjectId) {
     const links = await GameDeveloper.find({ gameId }).lean();
     const developerIds = links.map((l) => l.developerId);
@@ -86,9 +80,6 @@ export class GameQueryService {
     return developers;
   }
 
-  /**
-   * Get publishers for a game
-   */
   async getGamePublishers(gameId: Types.ObjectId) {
     const links = await GamePublisher.find({ gameId }).lean();
     const publisherIds = links.map((l) => l.publisherId);
@@ -98,9 +89,6 @@ export class GameQueryService {
     return publishers;
   }
 
-  /**
-   * Get genres for a game
-   */
   async getGameGenres(gameId: Types.ObjectId) {
     const links = await GameGenre.find({ gameId }).lean();
     const genreIds = links.map((l) => l.genreId);
@@ -110,9 +98,6 @@ export class GameQueryService {
     return genres;
   }
 
-  /**
-   * Get categories for a game
-   */
   async getGameCategories(gameId: Types.ObjectId) {
     const links = await GameCategory.find({ gameId }).lean();
     const categoryIds = links.map((l) => l.categoryId);
@@ -122,9 +107,6 @@ export class GameQueryService {
     return categories;
   }
 
-  /**
-   * Get tags for a game
-   */
   async getGameTags(gameId: Types.ObjectId) {
     const links = await GameTag.find({ gameId }).lean();
     const tagIds = links.map((l) => l.tagId);
@@ -132,7 +114,6 @@ export class GameQueryService {
       .select("name")
       .lean();
 
-    // Merge tag info with tag counts
     return tags.map((tag) => {
       const link = links.find((l) => l.tagId.toString() === tag._id.toString());
       return {
@@ -143,9 +124,6 @@ export class GameQueryService {
     });
   }
 
-  /**
-   * Get games by filter with relations populated
-   */
   async findGamesWithRelations(filter: any, skip: number, limit: number) {
     const games = await Game.find(filter)
       .skip(skip)
@@ -178,18 +156,13 @@ export class GameQueryService {
     return gamesWithRelations;
   }
 
-  /**
-   * Build filter for games based on query parameters
-   */
   async buildGameFilter(query: any): Promise<any> {
     const filter: any = {};
 
-    // Text search on game name
     if (query.search) {
       filter.$text = { $search: query.search };
     }
 
-    // Filter by developer
     if (query.developer) {
       const developer = await Developer.findOne({ name: query.developer });
       if (developer) {
@@ -199,7 +172,6 @@ export class GameQueryService {
       }
     }
 
-    // Filter by publisher
     if (query.publisher) {
       const publisher = await Publisher.findOne({ name: query.publisher });
       if (publisher) {
@@ -215,7 +187,6 @@ export class GameQueryService {
       }
     }
 
-    // Filter by genre
     if (query.genre) {
       const genre = await Genre.findOne({ name: query.genre });
       if (genre) {
@@ -231,7 +202,6 @@ export class GameQueryService {
       }
     }
 
-    // Price range filter
     if (query.minPrice || query.maxPrice) {
       filter.price = {};
       if (query.minPrice) {
@@ -242,12 +212,10 @@ export class GameQueryService {
       }
     }
 
-    // Metacritic score filter
     if (query.minScore) {
       filter.metacriticScore = { $gte: parseInt(query.minScore) };
     }
 
-    // Platform filter
     if (query.platform) {
       filter[`platforms.${query.platform}`] = true;
     }
